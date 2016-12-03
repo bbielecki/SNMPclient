@@ -64,11 +64,21 @@ public class SimpleSnmpClient {
         return event.getResponse().get(0).getVariable().toString();
     }
 
+    public String getOIDAsString(OID oid) throws IOException {
+        ResponseEvent event = get(new OID[]{oid});
+        return event.getResponse().get(0).getOid().toString();
+
+    }
+
     public String getNextAsString(OID oid) throws IOException {
         ResponseEvent event = getNext(new OID[]{oid});
         return event.getResponse().get(0).getVariable().toString();
     }
 
+    public String getNextOIDAsString(OID oid) throws IOException {
+        ResponseEvent event = getNext(new OID[]{oid});
+        return event.getResponse().get(0).getOid().toString();
+    }
 
     public void getAsString(OID oids,ResponseListener listener) {
         try {

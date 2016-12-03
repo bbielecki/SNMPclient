@@ -15,10 +15,10 @@ public class Main extends Application{
     public static final void main(String args[]) throws IOException {
 
         SimpleSnmpClient client = new SimpleSnmpClient("udp:127.0.0.1/161");
-        String sysDescr = client.getAsString(new OID("1.3.6.1.2.1.1.1.0"));
-        String sysDescr2 = client.getNextAsString(new OID("1.3.6.1.2.1.1.1"));
-        System.out.println(sysDescr);
-        System.out.println(sysDescr2);
+       /// String sysDescr = client.getAsString(new OID("1.3.6.1.2.1.1.1.0"));
+      ///  String sysDescr2 = client.getNextAsString(new OID("1.3.6.1.2.1.1.1"));
+      ///  System.out.println(sysDescr);
+      ///  System.out.println(sysDescr2);
 
         launch(args);
 
