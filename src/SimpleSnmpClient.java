@@ -1,39 +1,28 @@
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.snmp4j.CommunityTarget;
-import org.snmp4j.PDU;
-import org.snmp4j.Snmp;
-import org.snmp4j.Target;
-import org.snmp4j.TransportMapping;
+import com.sun.org.apache.xpath.internal.SourceTree;
+import javafx.application.Platform;
+import org.snmp4j.*;
 import org.snmp4j.event.ResponseEvent;
 import org.snmp4j.event.ResponseListener;
+import org.snmp4j.mp.MPv1;
+import org.snmp4j.mp.MPv2c;
+import org.snmp4j.mp.MPv3;
 import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.Address;
-import org.snmp4j.smi.GenericAddress;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
-import org.snmp4j.smi.VariableBinding;
+import org.snmp4j.smi.*;
 import org.snmp4j.transport.DefaultUdpTransportMapping;
-import org.snmp4j.util.DefaultPDUFactory;
-import org.snmp4j.util.TableEvent;
-import org.snmp4j.util.TableUtils;
+import org.snmp4j.transport.TransportMappings;
+import org.snmp4j.util.*;
 
-
-/**
- * Simplest client possible
- *
- * @author johanrask
- *
- */
 public class SimpleSnmpClient {
 
     private String address;
 
     private Snmp snmp;
+    public int rows;
 
 
     public SimpleSnmpClient(String address) {
@@ -46,22 +35,45 @@ public class SimpleSnmpClient {
         }
     }
 
-    // Since snmp4j relies on asynch req/resp we need a listener
-    // for responses which should be closed
     public void stop() throws IOException {
         snmp.close();
     }
 
     private void start() throws IOException {
-        TransportMapping transport = new DefaultUdpTransportMapping();
+        UdpAddress udpAddress = new UdpAddress("127.0.0.1/162");
+        TransportMapping transport = new DefaultUdpTransportMapping(udpAddress);
         snmp = new Snmp(transport);
-        // Do not forget this line!
         transport.listen();
+        CommandResponder trapPrinter = new CommandResponder() {
+            public synchronized void processPdu(CommandResponderEvent e) {
+                System.out.println("Received PDU...");
+                PDU command = e.getPDU();
+                if (command != null) {
+                    System.out.println(command.toString());
+                    ArrayList<String> trap = new ArrayList<>();
+                    System.out.println(command.getVariableBindings().get(0).getVariable().getSyntaxString());
+                    trap.add(command.getRequestID().toString());
+                    trap.add(Integer.toString(command.getErrorIndex()));
+                    trap.add(Integer.toString(command.getErrorStatus()));
+                    trap.add(command.getVariableBindings().toString());
+                    ViewerController.trapDataBase.add(trap);
+                }
+            }
+        };
+        snmp.addCommandResponder(trapPrinter);
     }
 
-    public String getAsString(OID oid) throws IOException {
+
+
+    public ArrayList<String> getAsString(OID oid) throws IOException {
         ResponseEvent event = get(new OID[]{oid});
-        return event.getResponse().get(0).getVariable().toString();
+        ArrayList<String> variable = new ArrayList<>();
+        variable.add(event.getResponse().get(0).getOid().toString());
+        variable.add(event.getResponse().get(0).getVariable().toString());
+        variable.add(event.getResponse().get(0).getVariable().getSyntaxString());
+        variable.add(address.substring(address.indexOf("1"),address.length()));
+
+        return variable;
     }
 
     public String getOIDAsString(OID oid) throws IOException {
@@ -70,9 +82,16 @@ public class SimpleSnmpClient {
 
     }
 
-    public String getNextAsString(OID oid) throws IOException {
+    public ArrayList<String> getNextAsString(OID oid) throws IOException {
         ResponseEvent event = getNext(new OID[]{oid});
-        return event.getResponse().get(0).getVariable().toString();
+        //System.err.println(event.getResponse().get(0).getVariable().getSyntaxString());
+        ArrayList<String> variable = new ArrayList<>();
+        variable.add(event.getResponse().get(0).getOid().toString());
+        variable.add(event.getResponse().get(0).getVariable().toString());
+        variable.add(event.getResponse().get(0).getVariable().getSyntaxString());
+        variable.add(address.substring(address.indexOf("1"),address.length()));
+
+        return variable;
     }
 
     public String getNextOIDAsString(OID oid) throws IOException {
@@ -140,20 +159,26 @@ public class SimpleSnmpClient {
      * Normally this would return domain objects or something else than this...
      */
     public List<List<String>> getTableAsStrings(OID[] oids) {
+        rows = 0;
         TableUtils tUtils = new TableUtils(snmp, new DefaultPDUFactory());
 
         @SuppressWarnings("unchecked")
         List<TableEvent> events = tUtils.getTable(getTarget(), oids, null, null);
-
-        List<List<String>> list = new ArrayList<List<String>>();
+        List<List<String>> list = new ArrayList<>();
         for (TableEvent event : events) {
+            System.out.println("Event...");
+            if(event.getIndex().toString().startsWith("1.1.")){
+                rows++;
+            }
+
             if(event.isError()) {
                 throw new RuntimeException(event.getErrorMessage());
             }
-            List<String> strList = new ArrayList<String>();
+            List<String> strList = new ArrayList<>();
             list.add(strList);
             for(VariableBinding vb: event.getColumns()) {
                 strList.add(vb.getVariable().toString());
+                System.out.println("Dodaję: " + vb.getVariable().toString());
             }
         }
         return list;
