@@ -42,10 +42,12 @@ public class Main extends Application {
         primaryStage.setMinHeight(600);
         primaryStage.setMinWidth(640);
         String musicFile = "moonlightsonata.mp3";     // For example
+        String musicFile2 = "12 Caravan.wma";
 
         Media sound = new Media(new File(musicFile).toURI().toString());
         MediaPlayer mediaPlayer = new MediaPlayer(sound);
         mediaPlayer.play();
+
 
 
     }
